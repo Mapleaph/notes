@@ -23,13 +23,37 @@
 #define SDRAM_BASE_ADDRESS_CE0    0x80000000	
 #define SDRAM_SIZE_BYTE           0x01000000	//256Mb SDRAM
 
+#define PLLCSR 0x01B7C100
+#define PLLMULT 0x01B7C110
+#define PLLDIV0 0x01B7C114
+#define PLLDIV1 0x01B7C118
+#define PLLDIV2 0x01B7C11C
+#define PLLDIV3 0x01B7C120
+#define PLLOSCDIV1 0x01B7C124
+
+#define CSR_PLLEN          0x00000001
+#define CSR_PLLPWRDN       0x00000002
+#define CSR_PLLRST         0x00000008
+#define CSR_PLLSTABLE      0x00000040
+
+#define DIV_ENABLE         0x00008000
+
 extern far void vectors();   /* _init_c00 */
 
 /*Local software delay function*/
-static void PLLDelay(int Count)
+//static void PLLDelay(int Count)
+//{
+//    volatile int i = Count;
+//    while(i--);
+//}
+
+void plldelay(Uint32 count)
 {
-    volatile int i = Count;
-    while(i--);
+   Uint32 i = count;
+   while(i--)
+   {
+     asm(" NOP 1");
+   }
 }
 
 /*
@@ -39,13 +63,13 @@ static void PLLDelay(int Count)
  */
 void InitEmif( void )
 {
-	*(int *)EMIF_GCTL     = 0x00000078;
-	*(int *)EMIF_CE0      = 0xffffff93;  // CE0:SDRAM 16-bit 
+	*(int *)EMIF_GCTL     = 0x3068;
+	*(int *)EMIF_CE0      = 0x30;  // CE0:SDRAM 16-bit
 	*(int *)EMIF_CE1      = 0xffffff13;  // CE1:Flash 16-bit 
 	 		
-	*(int *)EMIF_SDRAMCTL = 0x53115000;  // SDRAM control                
-	*(int *)EMIF_SDRAMTIM = 0x00000578;  // SDRAM timing (refresh)        
-	*(int *)EMIF_SDRAMEXT = 0x000a8529;  // SDRAM Extension register     
+	*(int *)EMIF_SDRAMCTL = 0x54126000;  // SDRAM control
+	*(int *)EMIF_SDRAMTIM = 0x061a;  // SDRAM timing (refresh)
+	*(int *)EMIF_SDRAMEXT = 0x54529;  // SDRAM Extension register
 }
 
 /*
@@ -128,41 +152,24 @@ void BSP_init(void)
         EMIF_FMKS(SDEXT, TCL, OF(1))
         };
     */    
-	/* Initialize PLL Registers */         
-	/* Put PLL in bypass */
-	PLL_bypass();
-	PLLDelay(20);
-	
-	/* Reset PLL */
-	PLL_reset();
-	PLLDelay(20);
-	
-	/* Crystal 50MHz */
-	/* Set main multiplier/divisor */
-    PLL_RSET(PLLDIV0, (1<<15 | 0<<0));          // 50MHz / 1 = 50MHz
-    PLL_RSET(OSCDIV1, (1<<15 | 0<<0));          // 50MHz / 1 = 50Mhz
-
-	PLL_RSET(PLLM, 8);                          // 50MHz  x 9 = 400MHz
-
-    /* Set DSP clock */
-    PLL_RSET(PLLDIV1, (1<<15 | 1<<0));          // 400MHz / 2 = 200MHz
-    PLLDelay(20);
-    
-    /* Set peripheral clock */
-    PLL_RSET(PLLDIV2, (1<<15 | 3<<0));         // 400MHz / 4 = 100MHz
-    PLLDelay(20);
-    
-    /* Set EMIF clock (ECLKOUT) */
-    PLL_RSET(PLLDIV3, (1<<15 | 3<<0));         // 400MHz / 4 = 100MHz
-    PLLDelay(20);
-    
-    /* Take PLL out of reset */
-    PLL_deassert();
-    PLLDelay(1500);
-    
-    /* Enalbe PLL */
-    PLL_enable();
-    PLLDelay(20);
+	/* Initialize PLL Registers */
+    /* Crystal 20MHz */
+    *(volatile unsigned int *)PLLCSR =0X00000000;/*disable the PLL,in bypass status*/
+    plldelay(20);
+    *(volatile unsigned int *)PLLCSR |=CSR_PLLRST;/*PLL in the reset Status*/
+    plldelay(20);
+    *(volatile unsigned int *)PLLDIV0=DIV_ENABLE;/*divide 1,output the same frequence*/
+    *(volatile unsigned int *)PLLMULT= 0x0000000f;/*Multiply 15 and the pll frequence is 300Mhz */
+    plldelay(20);
+    *(volatile unsigned int *)PLLOSCDIV1=DIV_ENABLE+0;/*clkout 3 output,10MHz*/
+    *(volatile unsigned int *)PLLDIV3=DIV_ENABLE+2;/*300Mhz/3=100Mhz for the EMIF port*/
+    *(volatile unsigned int *)PLLDIV2=DIV_ENABLE+2;/*300Mhz/3=100Mhz for Peripherals */
+    plldelay(20);
+    *(volatile unsigned int *)PLLDIV1=DIV_ENABLE+0;/*300Mhz for cpu core frequence*/
+    *(volatile unsigned int *)PLLCSR = 0x00000000 | DIV_ENABLE;/*Reset release*/
+    plldelay(1500);
+    *(volatile unsigned int *)PLLCSR |=CSR_PLLEN;/*enable the PLL*/
+    plldelay(20);
    
    	/* Initialize EMIF */
     //EMIF_config(&MyEMIFcfg0);

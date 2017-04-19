@@ -29,14 +29,14 @@ typedef float                             FP32;
 typedef double                            FP64;
 
 #ifndef __stdint_h
-typedef unsigned long                     uint40_t;
+//typedef unsigned long                     uint40_t;
 typedef unsigned int                      uint32_t;
 typedef unsigned short                    uint16_t;
 typedef unsigned char                     uint8_t;
-typedef long                              int40_t;
+//typedef long                              int40_t;
 typedef int                               int32_t;
 typedef short                             int16_t;
-typedef char                              int8_t;
+//typedef char                              int8_t;
 
 typedef float                             fp32_t;
 typedef double                            fp64_t;

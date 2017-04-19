@@ -19,10 +19,10 @@ main()
 	printf("\nErase Flash ok.");
 	
     /* Write flash memory. */
-	Flash_Writem(0x90000000, (uint16_t *)boot, sizeof(boot)<<1);   
+	Flash_Writem(0x90000000, (uint16_t *)boot, sizeof(boot)>>1);
     printf("\nWrite .boot ok.");
 
-   	Flash_Writem(0x90000000+(0x200<<1), (uint16_t *)text, sizeof(text)<<1);
+   	Flash_Writem(0x90000000+(0x200<<1), (uint16_t *)text, sizeof(text)>>1);
     printf("\nWrite .text ok.");
 
 	printf("\nBurn to flash ok.");
